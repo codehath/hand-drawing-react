@@ -43,11 +43,18 @@ export const HandDrawing = () => {
         if (canvasRef.current) {
           ctxRef.current = canvasRef.current.getContext('2d');
           if (ctxRef.current) {
+            // Set drawing styles
             ctxRef.current.lineJoin = 'round';
             ctxRef.current.lineCap = 'round';
             ctxRef.current.strokeStyle = '#ff0000';
             ctxRef.current.lineWidth = 3;
+            ctxRef.current.shadowColor = 'rgba(255, 0, 0, 0.3)';
+            ctxRef.current.shadowBlur = 5;
             ctxRef.current.globalCompositeOperation = 'source-over';
+            
+            // Enable image smoothing for better quality
+            ctxRef.current.imageSmoothingEnabled = true;
+            ctxRef.current.imageSmoothingQuality = 'high';
             console.log('Drawing canvas initialized');
           }
         }
@@ -133,9 +140,23 @@ export const HandDrawing = () => {
     // Clear previous cursor
     cursorCtxRef.current.clearRect(0, 0, cursorCanvasRef.current.width, cursorCanvasRef.current.height);
     
-    // Draw new cursor
+    // Draw outer glow
+    const gradient = cursorCtxRef.current.createRadialGradient(
+      point.x, point.y, 0,
+      point.x, point.y, 15
+    );
+    gradient.addColorStop(0, 'rgba(255, 0, 0, 0.3)');
+    gradient.addColorStop(0.5, 'rgba(255, 0, 0, 0.1)');
+    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    
     cursorCtxRef.current.beginPath();
-    cursorCtxRef.current.arc(point.x, point.y, 5, 0, Math.PI * 2);
+    cursorCtxRef.current.arc(point.x, point.y, 15, 0, Math.PI * 2);
+    cursorCtxRef.current.fillStyle = gradient;
+    cursorCtxRef.current.fill();
+    
+    // Draw cursor
+    cursorCtxRef.current.beginPath();
+    cursorCtxRef.current.arc(point.x, point.y, 4, 0, Math.PI * 2);
     cursorCtxRef.current.fillStyle = '#ff0000';
     cursorCtxRef.current.fill();
     cursorCtxRef.current.strokeStyle = '#ffffff';
@@ -144,6 +165,11 @@ export const HandDrawing = () => {
   };
 
   const detectHands = async () => {
+    // Skip detection if tab is not visible to save resources
+    if (document.hidden) {
+      animationFrameRef.current = requestAnimationFrame(detectHands);
+      return;
+    }
     if (!handposeModelRef.current || !videoRef.current || !canvasRef.current) return;
 
     try {
@@ -168,7 +194,7 @@ export const HandDrawing = () => {
           const dy = point.y - lastPointRef.current.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance > 2) {
+          if (distance > 0.2) {
             draw(lastPointRef.current, point);
             lastPointRef.current = point;
           }
@@ -191,15 +217,83 @@ export const HandDrawing = () => {
     }
   };
 
+  const points: Point[] = [];
+  const smoothingFactor = 0.3;
+  const interpolationPoints = 10;
+
+  const interpolatePoints = (start: Point, end: Point): Point[] => {
+    const points: Point[] = [];
+    for (let i = 0; i <= interpolationPoints; i++) {
+      points.push({
+        x: start.x + (end.x - start.x) * (i / interpolationPoints),
+        y: start.y + (end.y - start.y) * (i / interpolationPoints)
+      });
+    }
+    return points;
+  };
+
+  const getCurvePoints = (points: Point[]): Point[] => {
+    const curvePoints: Point[] = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = i > 0 ? points[i - 1] : points[i];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = i < points.length - 2 ? points[i + 2] : p2;
+
+      // Catmull-Rom to Cubic Bezier
+      const cp1x = p1.x + (p2.x - p0.x) * smoothingFactor;
+      const cp1y = p1.y + (p2.y - p0.y) * smoothingFactor;
+      const cp2x = p2.x - (p3.x - p1.x) * smoothingFactor;
+      const cp2y = p2.y - (p3.y - p1.y) * smoothingFactor;
+
+      curvePoints.push(p1);
+      curvePoints.push({ x: cp1x, y: cp1y });
+      curvePoints.push({ x: cp2x, y: cp2y });
+      curvePoints.push(p2);
+    }
+    return curvePoints;
+  };
+
   const draw = (start: Point, end: Point) => {
     if (!ctxRef.current) return;
 
+    // Add interpolated points between start and end
+    const newPoints = interpolatePoints(start, end);
+    points.push(...newPoints);
+    if (points.length < 4) {
+      // Draw straight line if we don't have enough points for a curve
+      ctxRef.current.beginPath();
+      ctxRef.current.strokeStyle = '#ff0000';
+      ctxRef.current.lineWidth = 3;
+      ctxRef.current.moveTo(start.x, start.y);
+      ctxRef.current.lineTo(end.x, end.y);
+      ctxRef.current.stroke();
+      return;
+    }
+
+    // Get points for the curve
+    const curvePoints = getCurvePoints(points.slice(-4));
+
+    // Draw the curve
     ctxRef.current.beginPath();
     ctxRef.current.strokeStyle = '#ff0000';
     ctxRef.current.lineWidth = 3;
-    ctxRef.current.moveTo(start.x, start.y);
-    ctxRef.current.lineTo(end.x, end.y);
+    ctxRef.current.moveTo(curvePoints[0].x, curvePoints[0].y);
+
+    for (let i = 1; i < curvePoints.length - 2; i += 3) {
+      ctxRef.current.bezierCurveTo(
+        curvePoints[i].x, curvePoints[i].y,
+        curvePoints[i + 1].x, curvePoints[i + 1].y,
+        curvePoints[i + 2].x, curvePoints[i + 2].y
+      );
+    }
+
     ctxRef.current.stroke();
+
+    // Keep only the last 100 points to prevent memory issues
+    if (points.length > 100) {
+      points.shift();
+    }
   };
 
   const clearCanvas = () => {
