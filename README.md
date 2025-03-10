@@ -1,54 +1,60 @@
-# React + TypeScript + Vite
+# Hand Drawing React App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A real-time hand drawing web application that uses your webcam to track your index finger and lets you draw on the screen. Built with React, TypeScript, MediaPipe Hands, and TensorFlow.js.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Real-time hand tracking using MediaPipe Hands
+- Draw on screen by moving your index finger
+- Visual cursor that follows your finger
+- Clear canvas functionality
+- Webcam feed overlay
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Node.js (v18 or higher)
+- pnpm (v8 or higher)
+- A webcam
+- A modern web browser with WebGL support
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/codehath/hand-drawing-react.git
+
+# Navigate to the project directory
+cd hand-drawing-react
+
+# Install dependencies using pnpm
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+To start the development server:
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+pnpm run dev
 ```
+
+Open your browser and navigate to `http://localhost:5173` (or the URL shown in your terminal).
+
+## Usage
+
+1. Grant camera permissions when prompted
+2. Hold your hand up in front of the camera
+3. Move your index finger to draw
+4. Use the "Clear Canvas" button to erase everything
+
+## Tech Stack
+
+- React + TypeScript
+- Vite
+- MediaPipe Hands
+- TensorFlow.js
+- pnpm (package manager)
+
+## License
+
+MIT
